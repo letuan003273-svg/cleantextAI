@@ -20,7 +20,7 @@ def clean_openai_text(text):
 # --- Hàm gọi Gemini API ---
 def humanize_text_gemini(text, api_key, tone="bình thường"):
     genai.configure(api_key=api_key)
-    model = genai.GenerativeModel('gemini-1.5-flash')
+    model = genai.GenerativeModel('gemini-2.5-flash')
     
     instruction = (
         "Bạn là một biên tập viên tiếng Việt chuyên nghiệp. "
