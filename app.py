@@ -5,7 +5,7 @@ import google.generativeai as genai
 # --- Cấu hình trang ---
 st.set_page_config(page_title="AI Text Humanizer (Gemini)", page_icon="✨", layout="centered")
 
-# --- Hàm xử lý làm sạch mã (Logic Regex giữ nguyên) ---
+# --- Hàm xử lý làm sạch mã ---
 def clean_openai_text(text):
     if not text: return ""
     text = re.sub(r'\*\*(.*?)\*\*', r'\1', text)
@@ -17,15 +17,11 @@ def clean_openai_text(text):
     text = re.sub(r'\[(.*?)\]\(.*?\)', r'\1', text)
     return text.strip()
 
-# --- Hàm gọi Gemini API để viết lại ---
+# --- Hàm gọi Gemini API ---
 def humanize_text_gemini(text, api_key, tone="bình thường"):
-    # Cấu hình API Key
     genai.configure(api_key=api_key)
+    model = genai.GenerativeModel('gemini-1.5-flash')
     
-    # Chọn model (gemini-2.5-flash chạy nhanh và hiệu quả cho text)
-    model = genai.GenerativeModel('gemini-2.5-flash')
-    
-    # Xây dựng câu lệnh (Prompt)
     instruction = (
         "Bạn là một biên tập viên tiếng Việt chuyên nghiệp. "
         "Nhiệm vụ: Viết lại đoạn văn bản dưới đây sao cho giọng văn tự nhiên, gần gũi như người thật viết. "
@@ -45,36 +41,63 @@ def humanize_text_gemini(text, api_key, tone="bình thường"):
     except Exception as e:
         return f"Lỗi khi gọi Gemini: {str(e)}"
 
-# --- Giao diện người dùng (UI) ---
-st.title("✨ AI Text Cleaner & Humanizer")
-st.caption("Sử dụng sức mạnh của Google Gemini")
+# --- Hàm hiển thị kết quả (Tái sử dụng để code gọn hơn) ---
+def show_result_area(result_text, filename_prefix):
+    """Hàm hiển thị vùng kết quả bao gồm Text area, nút Copy và Download"""
+    
+    st.markdown("### 🎉 Kết quả:")
+    
+    # 1. Hiển thị để đọc (Text Area)
+    st.text_area("Đọc và chỉnh sửa:", value=result_text, height=250)
+    
+    # Chia 2 cột cho nút Copy và Download
+    col_a, col_b = st.columns([1, 1])
+    
+    with col_a:
+        # 2. Vùng sao chép nhanh (Mẹo dùng st.code để có nút copy)
+        st.info("👇 Bấm vào góc phải ô dưới để Copy nhanh:")
+        st.code(result_text, language=None) 
 
-# --- XỬ LÝ API KEY TỰ ĐỘNG (Secrets) ---
+    with col_b:
+        # 3. Nút tải xuống
+        st.write("👇 Hoặc tải về máy:")
+        st.download_button(
+            label="📥 Tải xuống file .txt",
+            data=result_text,
+            file_name=f"{filename_prefix}.txt",
+            mime="text/plain",
+            use_container_width=True # Làm nút rộng ra cho đẹp
+        )
+
+# --- Giao diện chính ---
+st.title("✨ AI Text Cleaner & Humanizer")
+
+# --- XỬ LÝ API KEY ---
 api_key = None
 if "GOOGLE_API_KEY" in st.secrets:
     api_key = st.secrets["GOOGLE_API_KEY"]
-    st.sidebar.success("✅ Gemini API Key đã được kích hoạt.")
+    st.sidebar.success("✅ Gemini API Key đã kích hoạt.")
 else:
     st.sidebar.warning("⚠️ Chưa cấu hình Secrets.")
     api_key = st.sidebar.text_input("Nhập Gemini API Key", type="password")
-    st.sidebar.markdown("[Lấy API Key tại đây](https://aistudio.google.com/app/apikey)")
 
 # Khu vực nhập liệu
-input_text = st.text_area("Dán văn bản gốc vào đây:", height=200, placeholder="Dán văn bản từ ChatGPT/Gemini...")
+input_text = st.text_area("Dán văn bản gốc vào đây:", height=150, placeholder="Dán văn bản cần xử lý...")
 
-# Tabs chuyển đổi
+# Tabs
 tab1, tab2 = st.tabs(["🧹 Chỉ làm sạch (Clean)", "✨ Viết lại (Humanize)"])
 
-# --- TAB 1: CHỈ LÀM SẠCH ---
+# --- TAB 1: LÀM SẠCH ---
 with tab1:
     if st.button("🚀 Làm sạch ngay", key="btn_clean"):
         if input_text:
             cleaned = clean_openai_text(input_text)
-            st.text_area("Kết quả:", value=cleaned, height=300)
+            # Gọi hàm hiển thị kết quả
+            show_result_area(cleaned, "van_ban_sach")
         else:
             st.warning("Vui lòng nhập văn bản trước.")
 
-# --- TAB 2: VIẾT LẠI (DÙNG GEMINI) ---
+# --- TAB 2: VIẾT LẠI ---
 with tab2:
     tone_option = st.radio("Chọn giọng văn:", ["Bình thường", "Hài hước", "Nghiêm túc"], horizontal=True)
     
@@ -82,7 +105,7 @@ with tab2:
         if not input_text:
             st.warning("Vui lòng nhập văn bản trước.")
         elif not api_key:
-            st.error("Thiếu API Key. Vui lòng nhập Key.")
+            st.error("Thiếu API Key.")
         else:
             pre_cleaned = clean_openai_text(input_text)
             with st.spinner("Gemini đang viết lại..."):
@@ -91,8 +114,8 @@ with tab2:
             if "Lỗi" in humanized:
                 st.error(humanized)
             else:
-                st.success("Đã viết lại thành công!")
-                st.text_area("Kết quả:", value=humanized, height=300)
+                # Gọi hàm hiển thị kết quả
+                show_result_area(humanized, "van_ban_humanized")
 
 st.markdown("---")
-st.caption("App sử dụng model gemini-1.5-flash")
+st.caption("App powered by Google Gemini")
