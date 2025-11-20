@@ -22,7 +22,7 @@ def humanize_text_gemini(text, api_key, tone="bình thường"):
     # Cấu hình API Key
     genai.configure(api_key=api_key)
     
-    # Chọn model (gemini-1.5-flash chạy nhanh và hiệu quả cho text)
+    # Chọn model (gemini-2.5-flash chạy nhanh và hiệu quả cho text)
     model = genai.GenerativeModel('gemini-2.5-flash')
     
     # Xây dựng câu lệnh (Prompt)
